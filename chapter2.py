@@ -1,6 +1,7 @@
 #Author:Aria-K-Alethia
 #PCI-chapter2-Making Recommendations
 from math import sqrt
+from collections import defaultdict
 
 critics = {
     'Lisa Rose': {
@@ -78,6 +79,81 @@ def sim_pearson(prefs,person1,person2):
     p_svar = sqrt((sum1_sq - (sum1**2)/n) * (sum2_sq - (sum2**2)/n))
     if(p_svar == 0):return 0
     return cov/p_svar
+
+#ranking the critics
+def top_matches(prefs,person,n=5,similarity=sim_pearson):
+    scores = [(similarity(prefs,person,other),other) for other in prefs if other != person]
+    scores.sort(key = lambda x:-x[0])
+    return scores[:n]
+
+#Recommending Items
+def get_recommendations(prefs,person,similarity=sim_pearson):
+
+    sim_total = defaultdict(int)
+    score_total = defaultdict(int)
+    for other in prefs:
+        if(other == person):continue
+        sim = similarity(prefs,person,other)
+        if(sim <= 0):continue
+        for item in prefs[other]:
+            if(item not in prefs[person] or prefs[person][item] == 0):
+                score_total[item] += prefs[other][item]*sim
+                sim_total[item] += sim
+    rankings = [(total/sim_total[item],item) for item,total in score_total.items()]
+    rankings.sort(key = lambda x:-x[0])
+    return rankings
+
+#if we want to get the recommendation of different movie,we just transform the dict's key and value
+def transform_prefs(prefs):
+    result = defaultdict(dict)
+    for person in prefs:
+        for item in prefs[person]:
+            result[item][person] = prefs[person][item]
+    return result
+
+
+#item-based collaborative filtering
+def calculate_similar_items(prefs,n=10):
+    result={}
+    item_prefs = transform_prefs(prefs)
+    for item in item_prefs:
+        top_match_list = top_matches(item_prefs,item,n,sim_distance)
+        result[item] = top_match_list
+    return result
+
+#similar function if we want to recommend
+def get_recommended_items(prefs,item_match,user):
+    user_rating = prefs[user]
+    item_scores = defaultdict(int)
+    total_sim = defaultdict(int)
+    for (item,rating) in user_rating.items():
+        for (similarity,item2) in item_match[item]:
+            if(item2 in user_rating):continue
+            item_scores[item2] += rating*similarity
+            total_sim[item2] += similarity
+    rankings = [(total/total_sim[item],item) for (item,total) in item_scores.items()]
+    rankings.sort(key = lambda x:-x[0])
+    return rankings
+
+#Exercise 1:Tanimoto coefficient(Jaccard coefficient)
+#Tanimoto is suitable for the data where the data is 0(don't have) or 1(have)
+#this metric only tell you the similarity between two set.
+#does't suit for the movie rating data
+def sim_tanimoto(prefs,person1,person2):
+    #get the union set of person1 and person2
+    union_set = set([item for item in prefs[person1] if prefs[person1][item]!=0]\
+                    + [item for item in prefs[person2] if prefs[person2][item]!=0])
+    #get the intersection of person1 and person2
+    intersection = set([item for item in prefs[person1] if item in prefs[person2]])
+    return len(intersection)/len(union_set)
+
+
+
+
+
+
+
+
 
 
 
